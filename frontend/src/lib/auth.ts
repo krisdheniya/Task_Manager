@@ -1,5 +1,14 @@
 import { supabase } from "./supabase";
 
+const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_PASSWORD = 'admin123';
+
+const validateAdminCredentials = (email: string, pass: string) => {
+  if (email === ADMIN_EMAIL && pass !== ADMIN_PASSWORD) {
+    throw new Error('Admin password is incorrect');
+  }
+};
+
 export const signInWithGoogle = async () => {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -9,6 +18,8 @@ export const signInWithGoogle = async () => {
 };
 
 export const signUpWithEmail = async (email: string, pass: string) => {
+  validateAdminCredentials(email, pass);
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password: pass,
@@ -18,10 +29,28 @@ export const signUpWithEmail = async (email: string, pass: string) => {
 };
 
 export const signInWithEmail = async (email: string, pass: string) => {
+  validateAdminCredentials(email, pass);
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password: pass,
   });
-  if (error) throw error;
+
+  if (error) {
+    const errorMessage = error.message?.toLowerCase() || '';
+    if (
+      email === ADMIN_EMAIL &&
+      pass === ADMIN_PASSWORD &&
+      (errorMessage.includes('invalid login credentials') || errorMessage.includes('password'))
+    ) {
+      const { data: signupData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: pass,
+      });
+      if (signUpError) throw signUpError;
+      return signupData;
+    }
+    throw error;
+  }
   return data;
 };

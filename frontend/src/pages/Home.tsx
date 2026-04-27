@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../lib/auth';
@@ -11,6 +11,15 @@ const Home = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownSeconds((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
 
   // If already authenticated, redirect to dashboard
   if (!loading && user) {
@@ -35,6 +44,7 @@ const Home = () => {
     } catch (error: any) {
       if (error?.message?.toLowerCase().includes('email rate limit')) {
         alert('Email rate limit exceeded. Please wait a few minutes before trying again.');
+        setCooldownSeconds(30);
       } else {
         alert(error.message);
       }
@@ -166,7 +176,10 @@ const Home = () => {
         <div style={styles.heroRight}>
           <div style={styles.authContainer}>
             <h2 style={{ fontSize: '28px', marginBottom: '8px', fontFamily: 'var(--heading)' }}>Welcome back</h2>
-            <p style={{ color: 'var(--text)', marginBottom: '32px' }}>Sign in to your workspace</p>
+            <p style={{ color: 'var(--text)', marginBottom: '8px' }}>Sign in to your workspace</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '14px' }}>
+              Admin test login: <strong>admin@gmail.com</strong> / <strong>admin123</strong>
+            </p>
 
             {loading ? (
               <p>Loading...</p>
@@ -231,9 +244,14 @@ const Home = () => {
                       />
                     </div>
                   )}
-                  <button type="submit" className="btn-primary" disabled={authLoading} style={{ marginTop: '8px' }}>
+                  <button type="submit" className="btn-primary" disabled={authLoading || cooldownSeconds > 0} style={{ marginTop: '8px' }}>
                     {authLoading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
                   </button>
+                  {cooldownSeconds > 0 && (
+                    <p style={{ textAlign: 'center', marginTop: '12px', color: '#c0392b' }}>
+                      Please wait {cooldownSeconds}s before retrying.
+                    </p>
+                  )}
                 </form>
 
                 <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: 'var(--text)' }}>
